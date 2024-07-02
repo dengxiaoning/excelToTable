@@ -1,0 +1,58 @@
+.el-table{
+  color: #FFFFFF;
+  border-color: rgba(33, 94, 151, 1);
+  background-color: rgba(1, 20, 37, 1);
+  *{
+    font-size: 18px;
+    font-weight: 400;
+    border-color:rgba(33, 94, 151, 1) !important;
+    /* 滚动条整体样式 */
+    &::-webkit-scrollbar {
+      width: 8px; /* 竖直滚动条宽度 */
+      height: 12px; /* 水平滚动条高度 */
+    }
+    /* 滚动条滑块 */
+    &::-webkit-scrollbar-thumb {
+      border-radius: 8px; /* 圆角滑块 */
+      background: rgba(34, 99, 160, 0.5); /* 设置滑块颜色 */
+    }
+    /* 滚动条轨道（背景） */
+    &::-webkit-scrollbar-track {
+      background: transparent; /* 设置轨道颜色 */
+    }
+    &::-webkit-scrollbar-track-piece {
+      background-color: transparent; /* 设置轨道颜色 */
+    }
+  }
+  .el-table__header-wrapper{
+    .el-table__header{
+      thead{
+        tr{
+          background-color: #0b2b47;
+          th{
+            color: #FFFFFF;
+            background-color: #0b2b47;
+          }
+        }
+      }
+    }
+
+  }
+  .el-table__body-wrapper{
+    .el-table__body{
+      tbody{
+        .el-table__row{
+          background-color: rgba(0,0,0,0.4);
+          .el-table__cell{
+            .hover-cell{
+              background-color: #0b2b47 !important;
+            }
+            color: #FFFFFF;
+            background-color: rgba(1, 20, 37, 1);
+          }
+        } 
+      }
+    }
+  }
+
+}
