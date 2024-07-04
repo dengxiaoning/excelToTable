@@ -70,6 +70,7 @@ export default {
       existMergeRow: {},
       existMergeCol: {},
       mergeColAtRow: {},
+      existRowColMerge: {},
       mergeKeys: [],
       tableHeadArr: [],
       resTableData: [],
@@ -99,6 +100,8 @@ export default {
   },
   methods: {
     objectSpanMethod ({ rowIndex, columnIndex }) {
+      // 行列都有合并的数据
+      const existRowColMerge = this.existRowColMerge[rowIndex]
       // 需要合并的列
       const mergeRow = this.categoryCN[columnIndex];
       // 合并列先找到那一例属于哪一行
@@ -128,22 +131,7 @@ export default {
             }
           }
         } else {  // 其它列,合并操作
-          // 有行合并也有列合并
-          if (existMergeRow && existMergeRow[rowIndex] && existMergeCol && existMergeCol[columnIndex]) {
-            if (rowspanObj) {
-              const _row = rowspanObj.rowspan
-              const _col = rowspanObj.colspan
-              return {
-                rowspan: _row ? _row : _col ? 1 : 0,
-                colspan: _col ? _col : _row ? 1 : 0
-              }
-            } else {
-              return {
-                rowspan: 0,
-                colspan: 0
-              }
-            }
-          } else if (existMergeRow && existMergeRow[rowIndex]) {// 只有行合并行为
+          if (existMergeRow && existMergeRow[rowIndex]) {// 只有行合并行为
 
             if (rowspanObj) {
               const _row = rowspanObj.rowspan
@@ -152,7 +140,6 @@ export default {
                 rowspan: _row ? _row : _col ? 1 : 0,
                 colspan: _col ? _col : _row ? 1 : 0
               }
-
             } else {
               // 除开第一列，其它行进行合并后，未合并的行需要隐藏，避免出现多行错乱问题
               return {
@@ -164,17 +151,45 @@ export default {
         }
       }
 
-      // 找合并列对应的那一行，避免所有列做重复操作
+      // 【只有列合并】找合并列对应的那一行，避免所有列做重复操作
       if (mergeColAtRow && mergeColAtRow[columnIndex]) {
         const mergeRowPlus = this.categoryCN[columnIndex];
         if (mergeRowPlus) {
-          // 只有列表合并，
+          // 只有列合并，
           let colspanObj = mergeRowPlus.find((ee, index) => ee.colNum == columnIndex && (ee.rowNum - 4) == rowIndex)
           if (colspanObj) {
             const _col = colspanObj.colspan
             return {
               rowspan: 1,
               colspan: _col
+            }
+          }
+        } else {
+          return {
+            rowspan: 0,
+            colspan: 0
+          }
+        }
+      }
+
+      // 【存在行列同时合并】找到存在有行列同时合并的那一行数据，根据columnIndex 再从分组数据组查找是否存在真正合并的操作
+      // 如果没有那就代表改行只是参与了合并行为，但他本身不需要进行合并(上一行或列已经完成了合并操作)
+      if (existRowColMerge && existRowColMerge[columnIndex]) {
+        const mergeRowPlus = this.categoryCN[columnIndex];
+        if (mergeRowPlus) {
+          // 存在行列同时合并，
+          let colspanObj = mergeRowPlus.find((ee, index) => ee.colNum == columnIndex && (ee.rowNum - 4) == rowIndex)
+          if (colspanObj) {
+            const _col = colspanObj.colspan
+            const _row = colspanObj.rowspan
+            return {
+              rowspan: _row,
+              colspan: _col
+            }
+          } else {
+            return {
+              rowspan: 0,
+              colspan: 0
             }
           }
         } else {
@@ -194,7 +209,7 @@ export default {
         const ab = await f.arrayBuffer();
         /* parse workbook */
         const wb = read(ab);
-        console.log(wb);
+        // console.log(wb);
         this.cacheWB['base'] = wb.Sheets[wb.SheetNames[0]];
         this.cacheWB['fun'] = wb.Sheets[wb.SheetNames[1]];
         /* update data */
@@ -383,54 +398,94 @@ export default {
           categoryCN[cn.colNum] = [cn];
         }
       })
-
+      // console.log(categoryCN);
       this.existMergeRow = {};
       this.existMergeCol = {};
       this.mergeColAtRow = {};
+      this.existRowColMerge = {};
       const existMergeRow = this.existMergeRow// 合并行行为记录
       const existMergeCol = this.existMergeCol // 合并列行为记录
       const mergeColAtRow = this.mergeColAtRow;// 记录合并列是属于哪一行的
+      const existRowColMerge = this.existRowColMerge;// 行列都有合并
       // 计算出哪些行有合并参与合并行为，因为有的行完全没有合并操作，在table merge操作是需要特殊处理renter {rowspan:1,colspan:1}
       Object.keys(categoryCN).map(key => {
         categoryCN[key].forEach((e) => {
-          // 有e.rowspan才执行如下操作
-          if (e.rowspan) {
-            if (!existMergeRow[key]) { existMergeRow[key] = {} }
-            let rowspanNum = parseInt(e.rowspan);
-            const rowNum = e.rowNum - 4;// 行数
-            existMergeRow[key][rowNum] = true;// 标识他合并了
-            let step = 1;
-            while (rowspanNum > 1) {
-              existMergeRow[key][rowNum + step] = true;// 标识他合并了
-              step++;
-              rowspanNum -= 1;
-            }
-          }
-
-          if (e.colspan) {
+          // 行列同时存在合并行为
+          if (e.rowspan && e.colspan) {
             const keynum = parseInt(key) - 1
             const rowNumm = e.rowNum - 4;
             const colNum = e.colNum;// 列数
             // 行号:列号
-            if (!mergeColAtRow[rowNumm]) { mergeColAtRow[rowNumm] = {} }
-            mergeColAtRow[rowNumm][colNum] = true;
+            if (!existRowColMerge[rowNumm]) { existRowColMerge[rowNumm] = {} }
+            existRowColMerge[rowNumm][colNum] = true;
+
+            // 他合并了几行，记录下一次合并
+            let rowspanNum = parseInt(e.rowspan);
 
 
-            if (!existMergeCol[keynum]) { existMergeCol[keynum] = {} }
+            // if (!existMergeCol[keynum]) { existMergeCol[keynum] = {} }
             let colspanNum = parseInt(e.colspan);
 
-            existMergeCol[keynum][colNum] = true;// 标识他合并了
+            // existMergeCol[keynum][colNum] = true;// 标识他合并了
             let colstep = 1;
             while (colspanNum > 1) {
-              existMergeCol[keynum][colNum + colstep] = true;// 标识他合并了
-              mergeColAtRow[rowNumm][colNum + colstep] = true;
+              // existMergeCol[keynum][colNum + colstep] = true;// 标识他合并了
+              existRowColMerge[rowNumm][colNum + colstep] = true;
               colstep++;
               colspanNum -= 1;
             }
+
+            // 存在行列同时合并的情况比较特殊，如合并一个两行两列，
+            // 那么在合并第一行时就已经完成了行列合并操作，下面的一行在同一个位置就不需要做任何操作
+            let step = 1;
+            while (rowspanNum > 1) {
+              if (!existRowColMerge[rowNumm + step]) { existRowColMerge[rowNumm + step] = {} }
+              existRowColMerge[rowNumm + step] = existRowColMerge[rowNumm];// 下一行 标识他合并了，可以直接使用上一行的数据
+              step++;
+              rowspanNum -= 1;
+            }
+          } else {
+            // 有e.rowspan才执行如下操作
+            if (e.rowspan) {
+              if (!existMergeRow[key]) { existMergeRow[key] = {} }
+              let rowspanNum = parseInt(e.rowspan);
+              const rowNum = e.rowNum - 4;// 行数
+              existMergeRow[key][rowNum] = true;// 标识他合并了
+              let step = 1;
+              while (rowspanNum > 1) {
+                existMergeRow[key][rowNum + step] = true;// 标识他合并了
+                step++;
+                rowspanNum -= 1;
+              }
+            }
+            // 只有列合并
+            if (e.colspan) {
+              const keynum = parseInt(key) - 1
+              const rowNumm = e.rowNum - 4;
+              const colNum = e.colNum;// 列数
+              // 行号:列号
+              if (!mergeColAtRow[rowNumm]) { mergeColAtRow[rowNumm] = {} }
+              mergeColAtRow[rowNumm][colNum] = true;
+
+
+              if (!existMergeCol[keynum]) { existMergeCol[keynum] = {} }
+              let colspanNum = parseInt(e.colspan);
+
+              existMergeCol[keynum][colNum] = true;// 标识他合并了
+              let colstep = 1;
+              while (colspanNum > 1) {
+                existMergeCol[keynum][colNum + colstep] = true;// 标识他合并了
+                mergeColAtRow[rowNumm][colNum + colstep] = true;
+                colstep++;
+                colspanNum -= 1;
+              }
+            }
           }
+
         })
       })
 
+      // console.log(existRowColMerge);
     },
     // js去除string里面html代码
     removeHTMLTags (str) {

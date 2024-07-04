@@ -4,6 +4,10 @@
 
 - 大致效果如下
 
+1、行列合并效果
+![行列合并效果](./public/rowColMerge.png)
+
+2、sheet 切换效果
 ![预览效果](./public/excelToTable.gif)
 
 ## Project setup
